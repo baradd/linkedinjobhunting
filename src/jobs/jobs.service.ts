@@ -11,7 +11,10 @@ import { matchesJob } from './job-filter';
 import { Job, JOB_SOURCES, JobSource } from './job.interface';
 
 export interface PollSummary {
-  skipped?: 'already running' | 'paused' | 'not paired (send /start to the bot)';
+  skipped?:
+    | 'already running'
+    | 'paused'
+    | 'not paired (send /start to the bot)';
   fetched: Record<string, number>;
   errors: string[];
   matched: number;
@@ -55,12 +58,18 @@ export class JobsService {
   }
 
   async poll(force: boolean): Promise<PollSummary> {
-    const summary: PollSummary = { fetched: {}, errors: [], matched: 0, sent: 0 };
+    const summary: PollSummary = {
+      fetched: {},
+      errors: [],
+      matched: 0,
+      sent: 0,
+    };
     if (this.running) return { ...summary, skipped: 'already running' };
     this.running = true;
 
     try {
-      if (!(await this.owner.getChatId())) return { ...summary, skipped: 'not paired (send /start to the bot)' };
+      if (!(await this.owner.getChatId()))
+        return { ...summary, skipped: 'not paired (send /start to the bot)' };
 
       const settings = await this.settings.get();
       if (settings.paused && !force) return { ...summary, skipped: 'paused' };
@@ -79,20 +88,35 @@ export class JobsService {
           summary.fetched[src.name] = jobs.length;
           candidates.push(...jobs);
         } catch (err) {
+          // retry in ~10 min instead of every minute (protects API quotas and avoids getting blocked)
+          await this.redis.set(
+            lastKey,
+            Date.now() - Math.max(0, src.intervalMinutes - 10) * 60_000,
+          );
           const msg = `${src.name}: ${(err as Error).message}`;
           summary.errors.push(msg);
           this.logger.warn(`Source failed: ${msg}`);
         }
       }
 
-      const maxAgeMs = this.config.getOrThrow<number>('jobs.maxAgeDays') * 86_400_000;
-      const matchDescription = this.config.getOrThrow<boolean>('jobs.matchDescription');
+      const maxAgeMs =
+        this.config.getOrThrow<number>('jobs.maxAgeDays') * 86_400_000;
+      const matchDescription = this.config.getOrThrow<boolean>(
+        'jobs.matchDescription',
+      );
       const now = Date.now();
 
       const matching = candidates
-        .filter((j) => !j.postedAt || Number.isNaN(j.postedAt.getTime()) || now - j.postedAt.getTime() <= maxAgeMs)
+        .filter(
+          (j) =>
+            !j.postedAt ||
+            Number.isNaN(j.postedAt.getTime()) ||
+            now - j.postedAt.getTime() <= maxAgeMs,
+        )
         .filter((j) => matchesJob(j, settings, { matchDescription }))
-        .sort((a, b) => (b.postedAt?.getTime() ?? 0) - (a.postedAt?.getTime() ?? 0));
+        .sort(
+          (a, b) => (b.postedAt?.getTime() ?? 0) - (a.postedAt?.getTime() ?? 0),
+        );
       summary.matched = matching.length;
 
       const firstRun = !(await this.redis.get(BOOTSTRAP_KEY));
@@ -103,8 +127,16 @@ export class JobsService {
         const tcKey = `seen:tc:${slug(job.title)}|${slug(job.company)}`;
 
         // dedupe by posting id, then by title+company (same job posted on two sources)
-        if ((await this.redis.set(idKey, '1', 'EX', SEEN_TTL_SECONDS, 'NX')) !== 'OK') continue;
-        if ((await this.redis.set(tcKey, '1', 'EX', SEEN_TTL_SECONDS, 'NX')) !== 'OK') continue;
+        if (
+          (await this.redis.set(idKey, '1', 'EX', SEEN_TTL_SECONDS, 'NX')) !==
+          'OK'
+        )
+          continue;
+        if (
+          (await this.redis.set(tcKey, '1', 'EX', SEEN_TTL_SECONDS, 'NX')) !==
+          'OK'
+        )
+          continue;
 
         if (firstRun && notified >= BOOTSTRAP_NOTIFY) continue; // baseline: mark as seen, don't notify
 
@@ -118,7 +150,9 @@ export class JobsService {
           // allow a retry on the next fetch
           await this.redis.del(idKey, tcKey);
           summary.errors.push(`notify ${job.id}: ${(err as Error).message}`);
-          this.logger.warn(`Could not notify ${job.id}: ${(err as Error).message}`);
+          this.logger.warn(
+            `Could not notify ${job.id}: ${(err as Error).message}`,
+          );
         }
       }
 
@@ -139,7 +173,9 @@ export class JobsService {
   async status(): Promise<SourceStatus[]> {
     return Promise.all(
       this.sources.map(async (s) => {
-        const last = Number((await this.redis.get(`source:last:${s.name}`)) ?? 0);
+        const last = Number(
+          (await this.redis.get(`source:last:${s.name}`)) ?? 0,
+        );
         return {
           name: s.name,
           enabled: s.isEnabled(),

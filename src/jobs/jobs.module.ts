@@ -6,6 +6,7 @@ import { JobsService } from './jobs.service';
 import { ArbeitnowSource } from './sources/arbeitnow.source';
 import { LinkedinCrawlSource } from './sources/linkedin-crawl.source';
 import { LinkedinEmailSource } from './sources/linkedin-email.source';
+import { LinkedinPostsSource } from './sources/linkedin-posts.source';
 import { RemotiveSource } from './sources/remotive.source';
 
 @Module({
@@ -15,6 +16,7 @@ import { RemotiveSource } from './sources/remotive.source';
     ArbeitnowSource,
     LinkedinEmailSource,
     LinkedinCrawlSource,
+    LinkedinPostsSource,
     {
       // To add a source: create a class implementing JobSource, add it here and in `inject`.
       provide: JOB_SOURCES,
@@ -24,6 +26,7 @@ import { RemotiveSource } from './sources/remotive.source';
         ArbeitnowSource,
         LinkedinEmailSource,
         LinkedinCrawlSource,
+        LinkedinPostsSource,
       ],
     },
     JobsService,
