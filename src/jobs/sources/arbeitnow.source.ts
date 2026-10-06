@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { fetchJson, stripHtml } from '../../common/text.util';
+import { fetchJson, isSourceDisabled, stripHtml } from '../../common/text.util';
 import { Job, JobSource } from '../job.interface';
 
 interface ArbeitnowResponse {
@@ -24,15 +24,19 @@ export class ArbeitnowSource implements JobSource {
   readonly intervalMinutes: number;
 
   constructor(config: ConfigService) {
-    this.intervalMinutes = config.getOrThrow<number>('sources.arbeitnowIntervalMin');
+    this.intervalMinutes = config.getOrThrow<number>(
+      'sources.arbeitnowIntervalMin',
+    );
   }
 
   isEnabled(): boolean {
-    return true;
+    return !isSourceDisabled(this.name);
   }
 
   async fetch(): Promise<Job[]> {
-    const data = await fetchJson<ArbeitnowResponse>('https://www.arbeitnow.com/api/job-board-api');
+    const data = await fetchJson<ArbeitnowResponse>(
+      'https://www.arbeitnow.com/api/job-board-api',
+    );
     return (data.data ?? []).map((j) => ({
       id: `arbeitnow:${j.slug}`,
       title: j.title,
