@@ -4,6 +4,7 @@ import { SettingsModule } from '../settings/settings.module';
 import { JOB_SOURCES } from './job.interface';
 import { JobsService } from './jobs.service';
 import { ArbeitnowSource } from './sources/arbeitnow.source';
+import { LinkedinCrawlSource } from './sources/linkedin-crawl.source';
 import { LinkedinEmailSource } from './sources/linkedin-email.source';
 import { RemotiveSource } from './sources/remotive.source';
 
@@ -13,11 +14,17 @@ import { RemotiveSource } from './sources/remotive.source';
     RemotiveSource,
     ArbeitnowSource,
     LinkedinEmailSource,
+    LinkedinCrawlSource,
     {
       // To add a source: create a class implementing JobSource, add it here and in `inject`.
       provide: JOB_SOURCES,
       useFactory: (...sources: unknown[]) => sources,
-      inject: [RemotiveSource, ArbeitnowSource, LinkedinEmailSource],
+      inject: [
+        RemotiveSource,
+        ArbeitnowSource,
+        LinkedinEmailSource,
+        LinkedinCrawlSource,
+      ],
     },
     JobsService,
   ],
